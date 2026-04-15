@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HiringCafe Resume Scanner</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14,2 14,8 20,8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+          <polyline points="10,9 9,9 8,9"/>
+        </svg>
+        <span>Resume Scanner</span>
+      </div>
+      <div class="privacy-badge" title="Resume keywords cached locally in your browser only — never uploaded">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2L4 5v6c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V5l-8-3z"/>
+        </svg>
+        Local only
+      </div>
+    </header>
+
+    <!-- Upload Section -->
+    <div id="upload-section" class="section">
+      <div class="upload-area" id="drop-zone">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <p class="upload-title">Upload your resume</p>
+        <p class="upload-hint">PDF, DOCX, or TXT · Processed locally</p>
+        <input type="file" id="resume-file" accept=".pdf,.docx,.txt" hidden>
+        <button class="btn-upload" id="browse-btn">Choose File</button>
+      </div>
+    </div>
+
+    <!-- Resume Loaded Section -->
+    <div id="resume-loaded" class="section hidden">
+      <div class="resume-info">
+        <div class="resume-file-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14,2 14,8 20,8"/>
+          </svg>
+        </div>
+        <div class="resume-details">
+          <div class="resume-name-row">
+            <span class="resume-name" id="resume-name">resume.pdf</span>
+            <span class="cache-badge hidden" id="cache-badge" title="Loaded from local cache">Cached</span>
+          </div>
+          <span class="resume-skills" id="resume-skills-count">0 keywords found</span>
+        </div>
+        <button class="btn-clear-resume" id="clear-resume-btn" title="Remove resume &amp; clear cache">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="skills-preview" id="skills-preview">
+        <!-- Top skills shown here -->
+      </div>
+    </div>
+
+    <!-- Scan Controls -->
+    <div id="scan-controls" class="section hidden">
+      <button class="btn-scan" id="scan-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        Scan Job Cards
+      </button>
+      <button class="btn-clear" id="clear-btn">Clear Highlights</button>
+    </div>
+
+    <!-- Parsing Progress -->
+    <div id="parsing-progress" class="section hidden">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+      <p class="progress-text" id="progress-text">Parsing resume...</p>
+    </div>
+
+    <!-- ML Learning Panel (always visible once any app recorded) -->
+    <div id="ml-section" class="section hidden">
+      <div class="ml-header">
+        <div class="ml-title-row">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/>
+            <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/>
+          </svg>
+          <span class="ml-title">ML Preferences</span>
+          <span class="ml-status" id="ml-status-badge">Learning</span>
+        </div>
+        <div class="ml-subrow">
+          <span class="ml-apps-count" id="ml-apps-count">0 applications learned</span>
+          <button class="btn-ml-reset" id="ml-reset-btn" title="Reset learned preferences">Reset</button>
+        </div>
+      </div>
+
+      <!-- Training progress bar -->
+      <div class="ml-train-track">
+        <div class="ml-train-fill" id="ml-train-fill"></div>
+        <span class="ml-train-label" id="ml-train-label">0 / 10 to full weight</span>
+      </div>
+
+      <!-- Inferred preferences tags -->
+      <div class="ml-prefs" id="ml-prefs">
+        <!-- Filled dynamically -->
+      </div>
+    </div>
+
+    <!-- Results Section -->
+    <div id="results-section" class="section hidden">
+      <div class="results-header">
+        <span class="results-title">Scan Results</span>
+        <span class="results-count" id="results-count">0 jobs scanned</span>
+      </div>
+      <div class="match-bars">
+        <div class="match-bar strong">
+          <span class="match-dot"></span>
+          <span class="match-label">Strong match</span>
+          <span class="match-count" id="count-strong">0</span>
+        </div>
+        <div class="match-bar good">
+          <span class="match-dot"></span>
+          <span class="match-label">Good match</span>
+          <span class="match-count" id="count-good">0</span>
+        </div>
+        <div class="match-bar partial">
+          <span class="match-dot"></span>
+          <span class="match-label">Partial match</span>
+          <span class="match-count" id="count-partial">0</span>
+        </div>
+        <div class="match-bar weak">
+          <span class="match-dot"></span>
+          <span class="match-label">Weak match</span>
+          <span class="match-count" id="count-weak">0</span>
+        </div>
+      </div>
+      <div class="ml-score-note hidden" id="ml-score-note">
+        <span class="ml-dot-inline"></span> Scores blend resume match + learned preferences
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+      <div class="legend-item">
+        <span class="legend-dot strong"></span><span>75%+ Strong</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-dot good"></span><span>50% Good</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-dot partial"></span><span>25% Partial</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-dot weak"></span><span>&lt;25% Weak</span>
+      </div>
+    </div>
+
+    <div class="footer-note">
+      Resume keywords cached in browser local storage.<br>
+      Raw file is never stored. Use ✕ to clear the cache.
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,511 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  width: 320px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  color: #1e293b;
+  background: #f8fafc;
+}
+
+.container {
+  padding: 0;
+}
+
+/* Header */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #1e293b;
+  color: white;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.privacy-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+  padding: 3px 7px;
+  border-radius: 99px;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  cursor: default;
+}
+
+/* Sections */
+.section {
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.section.hidden {
+  display: none;
+}
+
+/* Upload Area */
+.upload-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 16px;
+  border: 2px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.upload-area:hover,
+.upload-area.drag-over {
+  border-color: #6366f1;
+  background: #eef2ff;
+}
+
+.upload-title {
+  font-weight: 600;
+  color: #374151;
+  font-size: 13px;
+}
+
+.upload-hint {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.btn-upload {
+  margin-top: 4px;
+  padding: 7px 16px;
+  background: #6366f1;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-upload:hover {
+  background: #4f46e5;
+}
+
+/* Resume Loaded */
+.resume-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.resume-file-icon {
+  width: 36px;
+  height: 36px;
+  background: #eef2ff;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6366f1;
+  flex-shrink: 0;
+}
+
+.resume-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.resume-name-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.resume-name {
+  font-weight: 600;
+  font-size: 12px;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.cache-badge {
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 99px;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.cache-badge.hidden { display: none; }
+
+.resume-skills {
+  display: block;
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.btn-clear-resume {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: #94a3b8;
+  border-radius: 4px;
+  transition: color 0.2s;
+}
+
+.btn-clear-resume:hover {
+  color: #ef4444;
+}
+
+/* Skills Preview */
+.skills-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-height: 72px;
+  overflow: hidden;
+}
+
+.skill-tag {
+  font-size: 10px;
+  padding: 2px 7px;
+  background: #e0e7ff;
+  color: #4338ca;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+
+.skill-tag.tech {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.skill-tag.more {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+/* Scan Controls */
+#scan-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-scan {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 14px;
+  background: #6366f1;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-scan:hover {
+  background: #4f46e5;
+}
+
+.btn-scan:disabled {
+  background: #a5b4fc;
+  cursor: not-allowed;
+}
+
+.btn-clear {
+  padding: 9px 12px;
+  background: white;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-clear:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+/* Progress Bar */
+.progress-bar {
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #6366f1;
+  border-radius: 99px;
+  width: 0%;
+  transition: width 0.3s;
+}
+
+.progress-text {
+  font-size: 11px;
+  color: #64748b;
+  text-align: center;
+}
+
+/* Results */
+.results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.results-title {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.results-count {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.match-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.match-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #374151;
+}
+
+.match-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.match-bar.strong .match-dot { background: #22c55e; }
+.match-bar.good .match-dot    { background: #3b82f6; }
+.match-bar.partial .match-dot { background: #f59e0b; }
+.match-bar.weak .match-dot    { background: #ef4444; }
+
+.match-label {
+  flex: 1;
+}
+
+.match-count {
+  font-weight: 600;
+  font-size: 13px;
+  color: #1e293b;
+}
+
+/* ML score note */
+.ml-score-note {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  font-size: 10px;
+  color: #6366f1;
+}
+
+.ml-score-note.hidden { display: none; }
+
+.ml-dot-inline {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #6366f1;
+  flex-shrink: 0;
+}
+
+/* ML Learning Panel */
+#ml-section {
+  background: linear-gradient(135deg, #f5f3ff 0%, #eff6ff 100%);
+  border-bottom: 1px solid #e0e7ff;
+}
+
+.ml-header {
+  margin-bottom: 8px;
+}
+
+.ml-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  color: #4f46e5;
+}
+
+.ml-title {
+  font-weight: 600;
+  font-size: 12px;
+  flex: 1;
+}
+
+.ml-status {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 99px;
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.ml-status.active {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.ml-subrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ml-apps-count {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.btn-ml-reset {
+  background: none;
+  border: none;
+  font-size: 10px;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color 0.2s;
+}
+
+.btn-ml-reset:hover {
+  color: #ef4444;
+}
+
+/* Training progress track */
+.ml-train-track {
+  position: relative;
+  height: 6px;
+  background: #e0e7ff;
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.ml-train-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  border-radius: 99px;
+  width: 0%;
+  transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+}
+
+.ml-train-label {
+  font-size: 10px;
+  color: #94a3b8;
+  display: block;
+  text-align: right;
+  margin-bottom: 6px;
+}
+
+/* Inferred preference tags */
+.ml-prefs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.ml-pref-tag {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: #ede9fe;
+  color: #5b21b6;
+  border: 1px solid #c4b5fd;
+  white-space: nowrap;
+}
+
+.ml-prefs-empty {
+  font-size: 11px;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+/* Legend */
+.legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px 0;
+  padding: 10px 16px;
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.legend-dot.strong { background: #22c55e; }
+.legend-dot.good   { background: #3b82f6; }
+.legend-dot.partial{ background: #f59e0b; }
+.legend-dot.weak   { background: #ef4444; }
+
+/* Footer */
+.footer-note {
+  padding: 8px 16px 10px;
+  font-size: 10px;
+  color: #94a3b8;
+  text-align: center;
+  line-height: 1.5;
+  background: white;
+}
