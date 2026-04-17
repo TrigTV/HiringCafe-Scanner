@@ -270,8 +270,10 @@ async function extractTextFromPDF(buffer) {
   let streamMatch;
   while ((streamMatch = streamPattern.exec(raw)) !== null) {
     const streamData = streamMatch[1];
-    // Try to decompress - if it looks like compressed binary, skip
-    // If it contains readable text operations, extract
+    const decompressed = await tryInflatePDFStream(streamData);
+    if (decompressed) {
+      parts.push(...extractPDFTextOps(decompressed));
+    }
     parts.push(...extractPDFTextOps(streamData));
   }
 
@@ -291,6 +293,42 @@ async function extractTextFromPDF(buffer) {
   }
 
   return parts.join(' ');
+}
+
+async function tryInflatePDFStream(streamData) {
+  const asBytes = new Uint8Array(streamData.length);
+  for (let i = 0; i < streamData.length; i++) {
+    asBytes[i] = streamData.charCodeAt(i) & 0xff;
+  }
+
+  const inflateWith = async (format) => {
+    const ds = new DecompressionStream(format);
+    const writer = ds.writable.getWriter();
+    const reader = ds.readable.getReader();
+    await writer.write(asBytes);
+    await writer.close();
+
+    const chunks = [];
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+    }
+    const out = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
+    let pos = 0;
+    for (const c of chunks) { out.set(c, pos); pos += c.length; }
+    return new TextDecoder('latin1', { fatal: false }).decode(out);
+  };
+
+  try {
+    return await inflateWith('deflate');
+  } catch (_) {
+    try {
+      return await inflateWith('deflate-raw');
+    } catch (_) {
+      return null;
+    }
+  }
 }
 
 function extractPDFTextOps(block) {
@@ -454,6 +492,21 @@ function extractKeywords(text) {
     'ensure','support','create','implement','maintain','provide',
   ]);
 
+  const SKILL_ALIASES = {
+    'node.js': 'nodejs',
+    'asp.net': 'dotnet',
+    '.net': 'dotnet',
+    'golang': 'go',
+    'postgresql': 'postgres',
+    'k8s': 'kubernetes',
+    'scikit-learn': 'sklearn',
+    'github actions': 'github',
+    'power bi': 'powerbi',
+  };
+
+  const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const canonicalizeSkill = (skill) => SKILL_ALIASES[skill] || skill;
+
   const keywords = { tech: new Set(), general: new Set() };
   const words = normalized.split(/\s+/);
 
@@ -462,7 +515,7 @@ function extractKeywords(text) {
     const clean = word.replace(/^[-+.]+|[-+.]+$/g, '');
     if (clean.length < 2 || STOP_WORDS.has(clean)) continue;
     if (TECH_SKILLS.has(clean)) {
-      keywords.tech.add(clean);
+      keywords.tech.add(canonicalizeSkill(clean));
     } else if (clean.length >= 3 && /^[a-z0-9+#.-]+$/.test(clean)) {
       keywords.general.add(clean);
     }
@@ -470,8 +523,9 @@ function extractKeywords(text) {
 
   // Multi-word tech skills
   for (const skill of TECH_SKILLS) {
-    if (skill.includes(' ') && normalized.includes(skill)) {
-      keywords.tech.add(skill);
+    const re = new RegExp(`(?:^|[^a-z0-9+#.-])${escapeRegExp(skill)}(?:$|[^a-z0-9+#.-])`, 'i');
+    if (re.test(normalized)) {
+      keywords.tech.add(canonicalizeSkill(skill));
     }
   }
 

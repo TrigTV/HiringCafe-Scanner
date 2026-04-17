@@ -141,6 +141,14 @@ function extractCardText(card) {
   return parts.join(' ');
 }
 
+function extractCardTitle(cardText) {
+  const compact = (cardText || '').replace(/\s+/g, ' ').trim();
+  if (!compact) return '';
+  // Usually the first sentence/segment is the role title on HiringCafe cards.
+  const firstSegment = compact.split(/(?:\s{2,}|\||•|·| at | in )/i)[0] || '';
+  return firstSegment.slice(0, 120).trim().toLowerCase();
+}
+
 // ── Known tech skills to detect inside card text ──────────────────────────
 // Mirrors the TECH_SKILLS set in popup.js so both sides agree on what counts.
 const CARD_TECH_SKILLS = new Set([
@@ -160,6 +168,34 @@ const CARD_TECH_SKILLS = new Set([
   'tableau','powerbi','looker','excel','figma','jira','agile','scrum',
 ]);
 
+const SKILL_ALIASES = {
+  'node.js': 'nodejs',
+  'golang': 'go',
+  'postgresql': 'postgres',
+  'k8s': 'kubernetes',
+  '.net': 'dotnet',
+  'scikit-learn': 'sklearn',
+  'power bi': 'powerbi',
+};
+
+function escapeRegExp(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function canonicalizeSkill(skill) {
+  return SKILL_ALIASES[skill] || skill;
+}
+
+function findMentionedTechSkills(normText) {
+  const found = new Set();
+  for (const rawSkill of CARD_TECH_SKILLS) {
+    const skill = rawSkill.toLowerCase();
+    const re = new RegExp(`(?:^|[^a-z0-9+#.-])${escapeRegExp(skill)}(?:$|[^a-z0-9+#.-])`, 'i');
+    if (re.test(normText)) found.add(canonicalizeSkill(skill));
+  }
+  return found;
+}
+
 // ── Resume scoring ────────────────────────────────────────────────────────
 // Correct approach:
 //   1. Find which tech skills the card explicitly requires.
@@ -178,14 +214,11 @@ function resumeScore(text, keywords) {
   const norm = text.toLowerCase().replace(/[^a-z0-9+#.\-\s]/g, ' ').replace(/\s+/g, ' ');
   if (norm.trim().length < 10) return 0;
 
-  const resumeTechSet = new Set(keywords.tech);
+  const resumeTechSet = new Set((keywords.tech || []).map(k => canonicalizeSkill(String(k).toLowerCase())));
   const resumeGenSet  = new Set(keywords.general);
 
   // ── Step 1: find tech skills the card mentions ────────────────────────
-  const cardTech = [];
-  for (const skill of CARD_TECH_SKILLS) {
-    if (norm.includes(skill)) cardTech.push(skill);
-  }
+  const cardTech = [...findMentionedTechSkills(norm)];
 
   // ── Step 2: tech-heavy card ───────────────────────────────────────────
   if (cardTech.length > 0) {
@@ -197,10 +230,15 @@ function resumeScore(text, keywords) {
     const techCoverage = covered / cardTech.length;
 
     // Small bonus for general keyword matches (education, YOE, etc.)
-    const normWords = norm.split(' ');
+    const normWords = new Set(
+      norm
+        .split(' ')
+        .map(w => w.replace(/^[-+.]+|[-+.]+$/g, ''))
+        .filter(Boolean)
+    );
     let genHits = 0;
     for (const kw of resumeGenSet) {
-      if (normWords.includes(kw)) genHits++;
+      if (normWords.has(kw)) genHits++;
     }
     const genBonus = Math.min(0.15, genHits * 0.03);
 
@@ -228,6 +266,54 @@ function scoreToTier(score) {
   if (score >= 40) return 'good';
   if (score >= 20) return 'partial';
   return 'weak';
+}
+
+function findOpenJobPanel() {
+  const candidates = [
+    ...document.querySelectorAll(
+      '[class*="panel"],[class*="drawer"],[class*="detail"],[class*="sheet"],aside,[role="dialog"]'
+    )
+  ];
+
+  const visible = candidates
+    .map(el => ({ el, rect: el.getBoundingClientRect() }))
+    .filter(({ rect }) => rect.width > 300 && rect.height > window.innerHeight * 0.45);
+
+  // Prefer right-side large panel (HiringCafe job detail drawer)
+  visible.sort((a, b) => b.rect.width * b.rect.height - a.rect.width * a.rect.height);
+
+  for (const { el, rect } of visible) {
+    if (rect.left < window.innerWidth * 0.45) continue;
+    const text = (el.innerText || el.textContent || '').trim();
+    if (text.length < 200) continue;
+    if (/job description|about the role|responsibilities|required|qualifications/i.test(text)) {
+      return el;
+    }
+  }
+  return null;
+}
+
+function findSelectedCardForPanel(cards, panelText) {
+  if (!panelText) return null;
+
+  // 1) Direct selection attributes/classes
+  for (const card of cards) {
+    const aria = card.getAttribute('aria-selected');
+    const cls = (card.className || '').toString().toLowerCase();
+    const dataState = (card.getAttribute('data-state') || '').toLowerCase();
+    if (aria === 'true' || dataState === 'active' || /\b(active|selected|current)\b/.test(cls)) {
+      return card;
+    }
+  }
+
+  // 2) Fallback: title match with panel text
+  const panelNorm = panelText.toLowerCase();
+  for (const card of cards) {
+    const title = extractCardTitle(extractCardText(card));
+    if (title.length >= 10 && panelNorm.includes(title)) return card;
+  }
+
+  return null;
 }
 
 // ── Apply highlight to a single card ─────────────────────────────────────
@@ -392,7 +478,31 @@ async function scanAndHighlight(keywords) {
     counts[scoreToTier(final)]++;
   }
 
-  return { total: cards.length, ...counts, mlCount };
+  // If the job detail panel is open, re-score the selected card with richer text.
+  // This improves accuracy when the card preview is sparse.
+  const panel = findOpenJobPanel();
+  if (panel) {
+    const panelText = (panel.innerText || panel.textContent || '').trim();
+    const selectedCard = findSelectedCardForPanel(cards, panelText);
+    if (selectedCard && panelText.length > 200) {
+      const cardText = extractCardText(selectedCard);
+      const enrichedText = `${cardText} ${panelText}`;
+      const rScore = resumeScore(enrichedText, keywords) ?? 0;
+      const ml = inMLPhase ? mlScore(enrichedText) : null;
+      const final = blendScores(rScore, ml, mlCount);
+      highlightCard(selectedCard, final, inMLPhase);
+    }
+  }
+
+  const finalCounts = { strong: 0, good: 0, partial: 0, weak: 0 };
+  for (const card of cards) {
+    const tier = card.getAttribute(CARD_ATTR);
+    if (tier && Object.prototype.hasOwnProperty.call(finalCounts, tier)) {
+      finalCounts[tier]++;
+    }
+  }
+
+  return { total: cards.length, ...finalCounts, mlCount };
 }
 
 // ── "Mark Applied" watcher ────────────────────────────────────────────────
