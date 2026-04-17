@@ -272,9 +272,12 @@ async function extractTextFromPDF(buffer) {
     const streamData = streamMatch[1];
     const decompressed = await tryInflatePDFStream(streamData);
     if (decompressed) {
+      // Successfully decompressed — use the decompressed content only
       parts.push(...extractPDFTextOps(decompressed));
+    } else {
+      // Not compressed (or decompression failed) — try as raw text ops
+      parts.push(...extractPDFTextOps(streamData));
     }
-    parts.push(...extractPDFTextOps(streamData));
   }
 
   // Fallback: try direct BT/ET extraction from uncompressed sections
@@ -296,6 +299,9 @@ async function extractTextFromPDF(buffer) {
 }
 
 async function tryInflatePDFStream(streamData) {
+  // Skip streams that are clearly too short or obviously not compressed
+  if (streamData.length < 4) return null;
+
   const asBytes = new Uint8Array(streamData.length);
   for (let i = 0; i < streamData.length; i++) {
     asBytes[i] = streamData.charCodeAt(i) & 0xff;
@@ -305,8 +311,11 @@ async function tryInflatePDFStream(streamData) {
     const ds = new DecompressionStream(format);
     const writer = ds.writable.getWriter();
     const reader = ds.readable.getReader();
-    await writer.write(asBytes);
-    await writer.close();
+
+    // Write and close must be fire-and-forget so the reader can drain
+    // concurrently — awaiting write before reading causes a deadlock on
+    // large streams where the internal buffer fills up.
+    writer.write(asBytes).then(() => writer.close()).catch(() => writer.abort());
 
     const chunks = [];
     while (true) {
@@ -317,14 +326,17 @@ async function tryInflatePDFStream(streamData) {
     const out = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
     let pos = 0;
     for (const c of chunks) { out.set(c, pos); pos += c.length; }
-    return new TextDecoder('latin1', { fatal: false }).decode(out);
+    const text = new TextDecoder('latin1', { fatal: false }).decode(out);
+    // Sanity check: decompressed output should contain readable ASCII
+    if (text.length < 10) throw new Error('decompressed output too short');
+    return text;
   };
 
   try {
-    return await inflateWith('deflate');
+    return await inflateWith('deflate-raw');
   } catch (_) {
     try {
-      return await inflateWith('deflate-raw');
+      return await inflateWith('deflate');
     } catch (_) {
       return null;
     }
